@@ -44,6 +44,11 @@ import ClearIcon from '@mui/icons-material/Clear';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import ListAltIcon from '@mui/icons-material/ListAlt';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface Tarjeta {
   id: string;
@@ -584,11 +589,126 @@ const ComprasMSI = () => {
     return 0;
   });
 
+  const exportToExcel = () => {
+    const data = comprasOrdenadas.map(compra => ({
+      'Tarjeta': getNombreTarjeta(compra.tarjeta_id),
+      'Comercio': compra.comercio,
+      'Concepto': compra.concepto,
+      'Monto': typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto,
+      'Meses': compra.meses,
+      'Fecha Compra': formatFecha(compra.fecha_compra),
+      'Meses Pagados': compra.meses_pagados || 0,
+      'Meses Restantes': compra.meses_restantes || 0,
+      'Saldo Restante': typeof compra.saldo_restante === 'string' ? parseFloat(compra.saldo_restante) : (compra.saldo_restante || 0)
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Compras MSI');
+    
+    const wscols = [
+      { wch: 15 }, // Tarjeta
+      { wch: 20 }, // Comercio
+      { wch: 30 }, // Concepto
+      { wch: 12 }, // Monto
+      { wch: 8 },  // Meses
+      { wch: 15 }, // Fecha
+      { wch: 15 }, // Meses Pagados
+      { wch: 18 }, // Meses Restantes
+      { wch: 15 }  // Saldo
+    ];
+    ws['!cols'] = wscols;
+    
+    const fecha = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `compras-msi-${fecha}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF('landscape');
+    
+    doc.setFontSize(16);
+    doc.text('Compras a Meses Sin Intereses', 14, 15);
+    
+    const tableData = comprasOrdenadas.map(compra => [
+      getNombreTarjeta(compra.tarjeta_id),
+      compra.comercio,
+      compra.concepto || '-',
+      formatMonto(compra.monto),
+      compra.meses?.toString() || '-',
+      formatFecha(compra.fecha_compra),
+      (compra.meses_pagados || 0).toString(),
+      (compra.meses_restantes || 0).toString(),
+      formatMonto(compra.saldo_restante || 0)
+    ]);
+
+    autoTable(doc, {
+      startY: 22,
+      head: [['Tarjeta', 'Comercio', 'Concepto', 'Monto', 'Meses', 'Fecha', 'M. Pagados', 'M. Restantes', 'Saldo']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 25 },
+        1: { cellWidth: 35 },
+        2: { cellWidth: 50 },
+        3: { cellWidth: 22, halign: 'right' },
+        4: { cellWidth: 15, halign: 'center' },
+        5: { cellWidth: 25 },
+        6: { cellWidth: 20, halign: 'center' },
+        7: { cellWidth: 22, halign: 'center' },
+        8: { cellWidth: 22, halign: 'right' }
+      }
+    });
+
+    const fecha = new Date().toISOString().split('T')[0];
+    doc.save(`compras-msi-${fecha}.pdf`);
+  };
+
   return (
     <Container maxWidth="lg">
-      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+      {/* Primera fila: Título y botones de exportación */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
         <h1 style={{ margin: 0, color: '#333', fontSize: '1.6rem' }}>Compras a Meses Sin Intereses</h1>
-        <Stack direction="row" spacing={2} alignItems="center">
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={exportToExcel}
+            size="small"
+            sx={{ 
+              borderColor: '#16a085',
+              color: '#16a085',
+              '&:hover': {
+                borderColor: '#0f7a68',
+                bgcolor: 'rgba(22, 160, 133, 0.04)'
+              }
+            }}
+          >
+            Excel
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={exportToPDF}
+            size="small"
+            sx={{ 
+              borderColor: '#e74c3c',
+              color: '#e74c3c',
+              '&:hover': {
+                borderColor: '#c0392b',
+                bgcolor: 'rgba(231, 76, 60, 0.04)'
+              }
+            }}
+          >
+            PDF
+          </Button>
+        </Stack>
+      </Box>
+
+      {/* Segunda fila: Controles de búsqueda, filtros y acciones */}
+      <Box sx={{ mb: 3 }}>
+        <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             size="small"
             placeholder="Buscar..."

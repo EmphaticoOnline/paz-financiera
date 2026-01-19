@@ -74,9 +74,9 @@ const Mensualidades = () => {
     let aValue = a[orderBy];
     let bValue = b[orderBy];
 
-    if (aValue === undefined && bValue === undefined) return 0;
-    if (aValue === undefined) return orderDirection === 'asc' ? 1 : -1;
-    if (bValue === undefined) return orderDirection === 'asc' ? -1 : 1;
+    if ((aValue === undefined || aValue === null) && (bValue === undefined || bValue === null)) return 0;
+    if (aValue === undefined || aValue === null) return orderDirection === 'asc' ? 1 : -1;
+    if (bValue === undefined || bValue === null) return orderDirection === 'asc' ? -1 : 1;
 
     if (orderBy === 'monto') {
       aValue = typeof aValue === 'string' ? parseFloat(aValue as string) : aValue as number;

@@ -10,8 +10,15 @@ import {
   TableRow,
   Paper,
   Typography,
-  Box
+  Box,
+  Button,
+  Stack
 } from "@mui/material";
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 interface FlujoMensual {
   mes: string;
@@ -100,13 +107,122 @@ const FlujoMensual = () => {
     return banamex > 0 || bbva > 0 || volaris > 0 || liverpool > 0 || palacio > 0 || mercadoPago > 0;
   });
 
+  const exportToExcel = () => {
+    const data = flujoFiltrado.map(row => ({
+      'Mes': formatFecha(row.mes),
+      'Banamex': typeof row.banamex === 'string' ? parseFloat(row.banamex) : row.banamex,
+      'BBVA': typeof row.bbva === 'string' ? parseFloat(row.bbva) : row.bbva,
+      'Volaris': typeof row.volaris === 'string' ? parseFloat(row.volaris) : row.volaris,
+      'Liverpool': typeof row.liverpool === 'string' ? parseFloat(row.liverpool) : row.liverpool,
+      'Palacio': typeof row.palacio === 'string' ? parseFloat(row.palacio) : row.palacio,
+      'Mercado Pago': typeof row.mercado_pago === 'string' ? parseFloat(row.mercado_pago) : row.mercado_pago,
+      'Total': typeof row.suma_total === 'string' ? parseFloat(row.suma_total) : row.suma_total
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Flujo Mensual');
+    
+    // Ajustar ancho de columnas
+    const wscols = [
+      { wch: 20 }, // Mes
+      { wch: 12 }, // Banamex
+      { wch: 12 }, // BBVA
+      { wch: 12 }, // Volaris
+      { wch: 12 }, // Liverpool
+      { wch: 12 }, // Palacio
+      { wch: 15 }, // Mercado Pago
+      { wch: 12 }  // Total
+    ];
+    ws['!cols'] = wscols;
+    
+    const fecha = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(wb, `flujo-mensual-${fecha}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    
+    doc.setFontSize(16);
+    doc.text('Flujo Mensual', 14, 15);
+    doc.setFontSize(10);
+    doc.text('Proyección de pagos pendientes por mes y tarjeta', 14, 22);
+    
+    const tableData = flujoFiltrado.map(row => [
+      formatFecha(row.mes),
+      formatMonto(row.banamex),
+      formatMonto(row.bbva),
+      formatMonto(row.volaris),
+      formatMonto(row.liverpool),
+      formatMonto(row.palacio),
+      formatMonto(row.mercado_pago),
+      formatMonto(row.suma_total)
+    ]);
+
+    autoTable(doc, {
+      startY: 28,
+      head: [['Mes', 'Banamex', 'BBVA', 'Volaris', 'Liverpool', 'Palacio', 'Mercado Pago', 'Total']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 2 },
+      columnStyles: {
+        0: { cellWidth: 30 },
+        1: { cellWidth: 20, halign: 'right' },
+        2: { cellWidth: 20, halign: 'right' },
+        3: { cellWidth: 20, halign: 'right' },
+        4: { cellWidth: 20, halign: 'right' },
+        5: { cellWidth: 20, halign: 'right' },
+        6: { cellWidth: 25, halign: 'right' },
+        7: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] }
+      }
+    });
+
+    const fecha = new Date().toISOString().split('T')[0];
+    doc.save(`flujo-mensual-${fecha}.pdf`);
+  };
+
   return (
     <Container maxWidth="lg">
-      <Box sx={{ mb: 3 }}>
-        <h1 style={{ margin: 0, color: '#333', fontSize: '1.6rem' }}>Flujo Mensual</h1>
-        <Typography variant="body2" color="text.secondary">
-          Proyección de pagos pendientes por mes y tarjeta
-        </Typography>
+      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+        <Box>
+          <h1 style={{ margin: 0, color: '#333', fontSize: '1.6rem' }}>Flujo Mensual</h1>
+          <Typography variant="body2" color="text.secondary">
+            Proyección de pagos pendientes por mes y tarjeta
+          </Typography>
+        </Box>
+        <Stack direction="row" spacing={2}>
+          <Button
+            variant="outlined"
+            startIcon={<FileDownloadIcon />}
+            onClick={exportToExcel}
+            sx={{ 
+              borderColor: '#16a085',
+              color: '#16a085',
+              '&:hover': {
+                borderColor: '#0f7a68',
+                bgcolor: 'rgba(22, 160, 133, 0.04)'
+              }
+            }}
+          >
+            Excel
+          </Button>
+          <Button
+            variant="outlined"
+            startIcon={<PictureAsPdfIcon />}
+            onClick={exportToPDF}
+            sx={{ 
+              borderColor: '#e74c3c',
+              color: '#e74c3c',
+              '&:hover': {
+                borderColor: '#c0392b',
+                bgcolor: 'rgba(231, 76, 60, 0.04)'
+              }
+            }}
+          >
+            PDF
+          </Button>
+        </Stack>
       </Box>
 
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
