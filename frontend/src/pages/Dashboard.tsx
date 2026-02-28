@@ -9,6 +9,8 @@ import {
   Paper
 } from "@mui/material";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type FlujoMensual = {
   mes: string;
   banamex: number | string;
@@ -24,7 +26,7 @@ const Dashboard = () => {
   const [flujo, setFlujo] = useState<FlujoMensual[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:4000/flujo")
+    fetch(`${API_URL}/flujo`)
       .then(res => res.json())
       .then(data => setFlujo(data))
       .catch(error => console.error("Error al cargar flujo:", error));

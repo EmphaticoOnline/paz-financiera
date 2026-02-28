@@ -15,6 +15,8 @@ import {
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface Mensualidad {
   id: string;
   compra_id: string;
@@ -39,7 +41,7 @@ const Mensualidades = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:4000/mensualidades");
+      const response = await fetch(`${API_URL}/mensualidades`);
       const data = await response.json();
       setMensualidades(data);
     } catch (err) {

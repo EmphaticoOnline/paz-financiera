@@ -20,6 +20,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface FlujoMensual {
   mes: string;
   banamex: number | string;
@@ -40,7 +42,7 @@ const FlujoMensual = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:4000/flujo-mensual");
+  const response = await fetch(`${API_URL}/flujo-mensual`);
       const data = await response.json();
       setFlujo(data);
     } catch (err) {

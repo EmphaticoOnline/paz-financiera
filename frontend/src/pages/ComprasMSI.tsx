@@ -83,6 +83,8 @@ interface Mensualidad {
   mes: string;
 }
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 const ComprasMSI = () => {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -145,8 +147,8 @@ const ComprasMSI = () => {
     setError("");
     try {
       const [tarjetasRes, comprasRes] = await Promise.all([
-        fetch("http://localhost:4000/tarjetas"),
-        fetch("http://localhost:4000/compras")
+        fetch(`${API_URL}/tarjetas`),
+        fetch(`${API_URL}/compras`)
       ]);
       const tarjetasData = await tarjetasRes.json();
       const comprasData = await comprasRes.json();
@@ -303,13 +305,13 @@ const ComprasMSI = () => {
 
       let response;
       if (modoEdicion && compraActual) {
-        response = await fetch(`http://localhost:4000/compras/${compraActual.id}`, {
+        response = await fetch(`${API_URL}/compras/${compraActual.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
       } else {
-        response = await fetch("http://localhost:4000/compras", {
+        response = await fetch(`${API_URL}/compras`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
@@ -346,7 +348,7 @@ const ComprasMSI = () => {
     if (!compraAEliminar) return;
     
     try {
-      await fetch(`http://localhost:4000/compras/${compraAEliminar}`, {
+      await fetch(`${API_URL}/compras/${compraAEliminar}`, {
         method: "DELETE"
       });
       setOpenConfirm(false);
@@ -368,7 +370,7 @@ const ComprasMSI = () => {
     
     try {
       setLoading(true);
-      await fetch(`http://localhost:4000/compras/${compraARecalcular}/recalcular`, {
+      await fetch(`${API_URL}/compras/${compraARecalcular}/recalcular`, {
         method: "POST"
       });
       setOpenConfirmRecalcular(false);
@@ -389,7 +391,7 @@ const ComprasMSI = () => {
   const handleConfirmarRecalcularTodas = async () => {
     try {
       setLoading(true);
-      await fetch("http://localhost:4000/compras/recalcular-todas", {
+      await fetch(`${API_URL}/compras/recalcular-todas`, {
         method: "POST"
       });
       setOpenConfirmRecalcularTodas(false);
@@ -406,7 +408,7 @@ const ComprasMSI = () => {
     setCompraSeleccionada(compra);
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/mensualidades/${compra.id}`);
+  const response = await fetch(`${API_URL}/mensualidades/${compra.id}`);
       const data = await response.json();
       setMensualidades(data);
       setOpenMensualidades(true);

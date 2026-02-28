@@ -15,6 +15,8 @@ import {
   TextField
 } from "@mui/material";
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 type Tarjeta = {
   id: string;
   nombre: string;
@@ -36,7 +38,7 @@ const Tarjetas = () => {
   });
 
   const cargarTarjetas = async () => {
-    const response = await fetch("http://localhost:4000/tarjetas");
+  const response = await fetch(`${API_URL}/tarjetas`);
     const data = await response.json();
     setTarjetas(data);
   };
@@ -62,7 +64,7 @@ const Tarjetas = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("http://localhost:4000/tarjetas", {
+      const response = await fetch(`${API_URL}/tarjetas`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

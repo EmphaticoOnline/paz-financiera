@@ -18,6 +18,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface MensualidadDetalle {
   id: string;
   mes: string;
@@ -53,7 +55,7 @@ const DetalleMensualidades = () => {
     
     try {
       const response = await fetch(
-        `http://localhost:4000/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
+        `${API_URL}/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
       );
       
       if (!response.ok) {
