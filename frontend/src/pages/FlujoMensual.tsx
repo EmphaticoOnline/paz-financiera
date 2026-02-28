@@ -28,6 +28,7 @@ interface FlujoMensual {
   bbva: number | string;
   volaris: number | string;
   liverpool: number | string;
+  liverpool_visa: number | string;
   palacio: number | string;
   mercado_pago: number | string;
   suma_total: number | string;
@@ -103,10 +104,11 @@ const FlujoMensual = () => {
     const bbva = typeof row.bbva === 'string' ? parseFloat(row.bbva) : row.bbva;
     const volaris = typeof row.volaris === 'string' ? parseFloat(row.volaris) : row.volaris;
     const liverpool = typeof row.liverpool === 'string' ? parseFloat(row.liverpool) : row.liverpool;
+    const liverpoolVisa = typeof row.liverpool_visa === 'string' ? parseFloat(row.liverpool_visa) : row.liverpool_visa;
     const palacio = typeof row.palacio === 'string' ? parseFloat(row.palacio) : row.palacio;
     const mercadoPago = typeof row.mercado_pago === 'string' ? parseFloat(row.mercado_pago) : row.mercado_pago;
     
-    return banamex > 0 || bbva > 0 || volaris > 0 || liverpool > 0 || palacio > 0 || mercadoPago > 0;
+    return banamex > 0 || bbva > 0 || volaris > 0 || liverpool > 0 || liverpoolVisa > 0 || palacio > 0 || mercadoPago > 0;
   });
 
   const exportToExcel = () => {
@@ -116,6 +118,7 @@ const FlujoMensual = () => {
       'BBVA': typeof row.bbva === 'string' ? parseFloat(row.bbva) : row.bbva,
       'Volaris': typeof row.volaris === 'string' ? parseFloat(row.volaris) : row.volaris,
       'Liverpool': typeof row.liverpool === 'string' ? parseFloat(row.liverpool) : row.liverpool,
+      'Liverpool Visa': typeof row.liverpool_visa === 'string' ? parseFloat(row.liverpool_visa) : row.liverpool_visa,
       'Palacio': typeof row.palacio === 'string' ? parseFloat(row.palacio) : row.palacio,
       'Mercado Pago': typeof row.mercado_pago === 'string' ? parseFloat(row.mercado_pago) : row.mercado_pago,
       'Total': typeof row.suma_total === 'string' ? parseFloat(row.suma_total) : row.suma_total
@@ -132,6 +135,7 @@ const FlujoMensual = () => {
       { wch: 12 }, // BBVA
       { wch: 12 }, // Volaris
       { wch: 12 }, // Liverpool
+  { wch: 14 }, // Liverpool Visa
       { wch: 12 }, // Palacio
       { wch: 15 }, // Mercado Pago
       { wch: 12 }  // Total
@@ -156,6 +160,7 @@ const FlujoMensual = () => {
       formatMonto(row.bbva),
       formatMonto(row.volaris),
       formatMonto(row.liverpool),
+      formatMonto(row.liverpool_visa),
       formatMonto(row.palacio),
       formatMonto(row.mercado_pago),
       formatMonto(row.suma_total)
@@ -163,7 +168,7 @@ const FlujoMensual = () => {
 
     autoTable(doc, {
       startY: 28,
-      head: [['Mes', 'Banamex', 'BBVA', 'Volaris', 'Liverpool', 'Palacio', 'Mercado Pago', 'Total']],
+      head: [['Mes', 'Banamex', 'BBVA', 'Volaris', 'Liverpool', 'Liverpool Visa', 'Palacio', 'Mercado Pago', 'Total']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
@@ -175,8 +180,9 @@ const FlujoMensual = () => {
         3: { cellWidth: 20, halign: 'right' },
         4: { cellWidth: 20, halign: 'right' },
         5: { cellWidth: 20, halign: 'right' },
-        6: { cellWidth: 25, halign: 'right' },
-        7: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] }
+        6: { cellWidth: 20, halign: 'right' },
+        7: { cellWidth: 25, halign: 'right' },
+        8: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] }
       }
     });
 
@@ -239,6 +245,7 @@ const FlujoMensual = () => {
               <TableCell align="right" sx={{ color: 'white' }}><strong>BBVA</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Volaris</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Liverpool</strong></TableCell>
+              <TableCell align="right" sx={{ color: 'white' }}><strong>Liverpool Visa</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Palacio</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Mercado Pago</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white', bgcolor: '#002244' }}><strong>Total</strong></TableCell>
@@ -255,6 +262,7 @@ const FlujoMensual = () => {
                 {renderMontoCell(row.bbva, row.mes, 'BBVA')}
                 {renderMontoCell(row.volaris, row.mes, 'Volaris')}
                 {renderMontoCell(row.liverpool, row.mes, 'Liverpool')}
+                {renderMontoCell(row.liverpool_visa, row.mes, 'Liverpool Visa')}
                 {renderMontoCell(row.palacio, row.mes, 'Palacio')}
                 {renderMontoCell(row.mercado_pago, row.mes, 'Mercado Pago')}
                 <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: 'action.selected' }}>

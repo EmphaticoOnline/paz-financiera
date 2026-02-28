@@ -17,6 +17,7 @@ type FlujoMensual = {
   bbva: number | string;
   volaris: number | string;
   liverpool: number | string;
+  liverpool_visa: number | string;
   palacio: number | string;
   mercado_pago: number | string;
   suma_total: number | string;
@@ -56,6 +57,7 @@ const Dashboard = () => {
               <TableCell align="right"><strong>BBVA</strong></TableCell>
               <TableCell align="right"><strong>Volaris</strong></TableCell>
               <TableCell align="right"><strong>Liverpool</strong></TableCell>
+              <TableCell align="right"><strong>Liverpool Visa</strong></TableCell>
               <TableCell align="right"><strong>Palacio</strong></TableCell>
               <TableCell align="right"><strong>Mercado Pago</strong></TableCell>
               <TableCell align="right"><strong>Total</strong></TableCell>
@@ -69,6 +71,7 @@ const Dashboard = () => {
                 <TableCell align="right">{formatMonto(row.bbva)}</TableCell>
                 <TableCell align="right">{formatMonto(row.volaris)}</TableCell>
                 <TableCell align="right">{formatMonto(row.liverpool)}</TableCell>
+                <TableCell align="right">{formatMonto(row.liverpool_visa)}</TableCell>
                 <TableCell align="right">{formatMonto(row.palacio)}</TableCell>
                 <TableCell align="right">{formatMonto(row.mercado_pago)}</TableCell>
                 <TableCell align="right" style={{ fontWeight: "bold" }}>

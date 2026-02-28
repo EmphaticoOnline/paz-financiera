@@ -12,6 +12,7 @@ router.get("/", async (_, res) => {
         bbva,
         volaris,
         liverpool,
+        liverpool_visa,
         palacio,
         mercado_pago,
         suma_total
