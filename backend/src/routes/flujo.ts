@@ -14,9 +14,12 @@ router.get("/", async (_, res) => {
         liverpool,
         liverpool_visa,
         palacio,
+        hsbc,
+        inbursa,
         mercado_pago,
         suma_total
       FROM vw_flujo_msi_mensual
+      WHERE mes >= date_trunc('month', (now() at time zone 'UTC'))
       ORDER BY mes ASC
     `);
     res.json(result.rows);

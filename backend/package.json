@@ -8,6 +8,7 @@
     "dev": "ts-node-dev src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js"
+    ,"deploy": "npm run build && tar -czf dist-backend.tgz dist package.json && scp dist-backend.tgz ubuntu@148.113.192.7:/tmp/paz-backend.tgz && ssh ubuntu@148.113.192.7 \"sudo mkdir -p /var/www/paz-financiera/backend && sudo tar -xzf /tmp/paz-backend.tgz -C /var/www/paz-financiera/backend && cd /var/www/paz-financiera/backend && npm install --omit=dev\""
   },
   "keywords": [],
   "author": "",

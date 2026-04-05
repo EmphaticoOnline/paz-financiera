@@ -8,7 +8,9 @@ router.get("/", async (_, res) => {
   try {
     // La view ya filtra por fechas >= hoy, no necesitamos filtro adicional
     const result = await pool.query(
-      "SELECT * FROM vw_flujo_msi_mensual"
+      `SELECT * FROM vw_flujo_msi_mensual
+       WHERE mes >= date_trunc('month', (now() at time zone 'UTC'))
+       ORDER BY mes ASC`
     );
     res.json(result.rows);
   } catch (err) {

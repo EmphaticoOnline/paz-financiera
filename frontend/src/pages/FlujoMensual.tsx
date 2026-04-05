@@ -31,6 +31,8 @@ interface FlujoMensual {
   liverpool_visa: number | string;
   palacio: number | string;
   mercado_pago: number | string;
+  hsbc?: number | string;
+  inbursa?: number | string;
   suma_total: number | string;
 }
 
@@ -43,7 +45,7 @@ const FlujoMensual = () => {
     setLoading(true);
     setError("");
     try {
-  const response = await fetch(`${API_URL}/flujo-mensual`);
+      const response = await fetch(`${API_URL}/flujo-mensual`);
       const data = await response.json();
       setFlujo(data);
     } catch (err) {
@@ -65,9 +67,24 @@ const FlujoMensual = () => {
     return `$${valor.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const parseMesString = (fecha: string | undefined | null) => {
+    if (!fecha) return null;
+    const [yearStr, monthStr] = fecha.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month || month < 1 || month > 12) return null;
+    const etiquetasMes = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return {
+      year,
+      month,
+      label: `${etiquetasMes[month - 1]} ${year}`,
+      ymKey: `${yearStr}-${monthStr.padStart(2, '0')}`
+    };
+  };
+
   const formatFecha = (fecha: string) => {
-    if (!fecha) return '-';
-    return new Date(fecha).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' });
+    const parsed = parseMesString(fecha);
+    return parsed ? parsed.label : '-';
   };
   const renderMontoCell = (monto: number | string, mes: string, tarjeta: string) => {
     const valor = typeof monto === "string" ? parseFloat(monto) : monto;
@@ -98,8 +115,18 @@ const FlujoMensual = () => {
       </TableCell>
     );
   };
-  // La view ya agrupa por mes y filtra por fechas futuras, solo filtramos valores > 0
+  const startOfCurrentMonthKey = (() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  })();
+
+  // Filtrar por meses >= mes actual y valores > 0
   const flujoFiltrado = flujo.filter(row => {
+    const parsedMes = parseMesString(row.mes);
+
+    if (!parsedMes) return false;
+    if (parsedMes.ymKey < startOfCurrentMonthKey) return false;
+
     const banamex = typeof row.banamex === 'string' ? parseFloat(row.banamex) : row.banamex;
     const bbva = typeof row.bbva === 'string' ? parseFloat(row.bbva) : row.bbva;
     const volaris = typeof row.volaris === 'string' ? parseFloat(row.volaris) : row.volaris;
@@ -107,8 +134,10 @@ const FlujoMensual = () => {
     const liverpoolVisa = typeof row.liverpool_visa === 'string' ? parseFloat(row.liverpool_visa) : row.liverpool_visa;
     const palacio = typeof row.palacio === 'string' ? parseFloat(row.palacio) : row.palacio;
     const mercadoPago = typeof row.mercado_pago === 'string' ? parseFloat(row.mercado_pago) : row.mercado_pago;
+    const hsbc = typeof row.hsbc === 'string' ? parseFloat(row.hsbc) : row.hsbc ?? 0;
+    const inbursa = typeof row.inbursa === 'string' ? parseFloat(row.inbursa) : row.inbursa ?? 0;
     
-    return banamex > 0 || bbva > 0 || volaris > 0 || liverpool > 0 || liverpoolVisa > 0 || palacio > 0 || mercadoPago > 0;
+    return banamex > 0 || bbva > 0 || volaris > 0 || liverpool > 0 || liverpoolVisa > 0 || palacio > 0 || mercadoPago > 0 || hsbc > 0 || inbursa > 0;
   });
 
   const exportToExcel = () => {
@@ -120,6 +149,8 @@ const FlujoMensual = () => {
       'Liverpool': typeof row.liverpool === 'string' ? parseFloat(row.liverpool) : row.liverpool,
       'Liverpool Visa': typeof row.liverpool_visa === 'string' ? parseFloat(row.liverpool_visa) : row.liverpool_visa,
       'Palacio': typeof row.palacio === 'string' ? parseFloat(row.palacio) : row.palacio,
+      'HSBC': typeof row.hsbc === 'string' ? parseFloat(row.hsbc) : row.hsbc ?? 0,
+      'Inbursa': typeof row.inbursa === 'string' ? parseFloat(row.inbursa) : row.inbursa ?? 0,
       'Mercado Pago': typeof row.mercado_pago === 'string' ? parseFloat(row.mercado_pago) : row.mercado_pago,
       'Total': typeof row.suma_total === 'string' ? parseFloat(row.suma_total) : row.suma_total
     }));
@@ -137,6 +168,8 @@ const FlujoMensual = () => {
       { wch: 12 }, // Liverpool
   { wch: 14 }, // Liverpool Visa
       { wch: 12 }, // Palacio
+      { wch: 12 }, // HSBC
+      { wch: 12 }, // Inbursa
       { wch: 15 }, // Mercado Pago
       { wch: 12 }  // Total
     ];
@@ -162,13 +195,15 @@ const FlujoMensual = () => {
       formatMonto(row.liverpool),
       formatMonto(row.liverpool_visa),
       formatMonto(row.palacio),
+      formatMonto(row.hsbc ?? 0),
+      formatMonto(row.inbursa ?? 0),
       formatMonto(row.mercado_pago),
       formatMonto(row.suma_total)
     ]);
 
     autoTable(doc, {
       startY: 28,
-      head: [['Mes', 'Banamex', 'BBVA', 'Volaris', 'Liverpool', 'Liverpool Visa', 'Palacio', 'Mercado Pago', 'Total']],
+  head: [['Mes', 'Banamex', 'BBVA', 'Volaris', 'Liverpool', 'Liverpool Visa', 'Palacio', 'HSBC', 'Inbursa', 'Mercado Pago', 'Total']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
@@ -181,8 +216,10 @@ const FlujoMensual = () => {
         4: { cellWidth: 20, halign: 'right' },
         5: { cellWidth: 20, halign: 'right' },
         6: { cellWidth: 20, halign: 'right' },
-        7: { cellWidth: 25, halign: 'right' },
-        8: { cellWidth: 20, halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] }
+        7: { cellWidth: 20, halign: 'right' },
+        8: { cellWidth: 20, halign: 'right' },
+        9: { cellWidth: 25, halign: 'right' },
+        10:{ cellWidth: 20, halign: 'right', fontStyle: 'bold', fillColor: [240, 240, 240] }
       }
     });
 
@@ -247,6 +284,8 @@ const FlujoMensual = () => {
               <TableCell align="right" sx={{ color: 'white' }}><strong>Liverpool</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Liverpool Visa</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Palacio</strong></TableCell>
+              <TableCell align="right" sx={{ color: 'white' }}><strong>HSBC</strong></TableCell>
+              <TableCell align="right" sx={{ color: 'white' }}><strong>Inbursa</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white' }}><strong>Mercado Pago</strong></TableCell>
               <TableCell align="right" sx={{ color: 'white', bgcolor: '#002244' }}><strong>Total</strong></TableCell>
             </TableRow>
@@ -264,6 +303,8 @@ const FlujoMensual = () => {
                 {renderMontoCell(row.liverpool, row.mes, 'Liverpool')}
                 {renderMontoCell(row.liverpool_visa, row.mes, 'Liverpool Visa')}
                 {renderMontoCell(row.palacio, row.mes, 'Palacio')}
+                {renderMontoCell(row.hsbc ?? 0, row.mes, 'HSBC')}
+                {renderMontoCell(row.inbursa ?? 0, row.mes, 'Inbursa')}
                 {renderMontoCell(row.mercado_pago, row.mes, 'Mercado Pago')}
                 <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: 'action.selected' }}>
                   {formatMonto(row.suma_total)}
