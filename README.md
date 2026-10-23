@@ -122,3 +122,22 @@ paz-financiera/
 - **Frontend:** http://localhost:5173
 - **Backend API:** http://localhost:4000
 - **Repositorio GitHub:** https://github.com/EmphaticoOnline/paz-financiera.git
+
+## 🚢 Deploy a producción
+
+```bash
+npm run deploy         # compila, respalda y publica (frontend + backend)
+npm run deploy:check   # solo compila y verifica en local; no toca el servidor
+```
+
+`scripts/deploy.sh` ejecuta, deteniéndose en el primer error:
+
+1. Verifica acceso SSH a `ubuntu@148.113.192.7`, `rsync` y `pm2` remoto.
+2. Compila frontend (`tsc -b && vite build`) y backend (`tsc`).
+3. Verifica que `.env.production` use `VITE_API_URL=/api` y que el bundle no contenga URLs de desarrollo.
+4. Respalda `frontend/` y `backend/dist/` en `/var/www/paz-financiera/backups/<fecha>/`.
+5. Publica con rsync `frontend/dist/` → `frontend/` y `backend/dist/` → `backend/dist/` (`--delete` solo en `frontend/assets/` y `backend/dist/`; la raíz de `frontend/` se sincroniza sin borrar, y nunca se toca `src`, `.git`, `.env` ni `node_modules`).
+6. Si `backend/dist` cambió, reinicia solo `paz-financiera-api` con PM2.
+7. Verifica `https://paz-financiera.emphasys.cloud/`, el bundle JS, `/api/tarjetas` y el proceso PM2; si falla, restaura el respaldo.
+
+No instala dependencias del servidor: si `backend/package-lock.json` difiere del remoto, avisa.

@@ -1,0 +1,8 @@
+{
+  "name": "paz-financiera",
+  "private": true,
+  "scripts": {
+    "deploy": "bash ./scripts/deploy.sh",
+    "deploy:check": "CHECK_ONLY=true bash ./scripts/deploy.sh"
+  }
+}
