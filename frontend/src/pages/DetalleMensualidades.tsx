@@ -53,7 +53,7 @@ const DetalleMensualidades = () => {
     
     try {
       const response = await fetch(
-        `http://localhost:4000/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
+        `/api/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
       );
       
       if (!response.ok) {
@@ -109,8 +109,11 @@ const DetalleMensualidades = () => {
 
   const formatFecha = (fecha: string) => {
     if (!fecha) return '-';
-    const date = new Date(fecha);
-    return date.toLocaleDateString('es-MX', { year: 'numeric', month: 'long' });
+    const [year, month] = fecha.slice(0, 10).split('-').map(Number);
+    if (!year || !month) return '-';
+    return new Intl.DateTimeFormat('es-MX', {
+      year: 'numeric', month: 'long', timeZone: 'UTC'
+    }).format(new Date(Date.UTC(year, month - 1, 1)));
   };
 
   const calcularTotal = () => {

@@ -36,7 +36,7 @@ const Tarjetas = () => {
   });
 
   const cargarTarjetas = async () => {
-    const response = await fetch("http://localhost:4000/tarjetas");
+    const response = await fetch("/api/tarjetas");
     const data = await response.json();
     setTarjetas(data);
   };
@@ -62,7 +62,7 @@ const Tarjetas = () => {
 
   const handleSubmit = async () => {
     try {
-      const response = await fetch("http://localhost:4000/tarjetas", {
+      const response = await fetch("/api/tarjetas", {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

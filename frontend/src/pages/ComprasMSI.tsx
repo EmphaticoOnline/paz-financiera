@@ -145,14 +145,14 @@ const ComprasMSI = () => {
     setError("");
     try {
       const [tarjetasRes, comprasRes] = await Promise.all([
-        fetch("http://localhost:4000/tarjetas"),
-        fetch("http://localhost:4000/compras")
+        fetch("/api/tarjetas"),
+        fetch("/api/compras")
       ]);
       const tarjetasData = await tarjetasRes.json();
       const comprasData = await comprasRes.json();
       setTarjetas(tarjetasData);
-      setCompras(comprasData.sort((a: Compra, b: Compra) => 
-        new Date(b.fecha_compra).getTime() - new Date(a.fecha_compra).getTime()
+      setCompras(comprasData.sort((a: Compra, b: Compra) =>
+        b.fecha_compra.slice(0, 10).localeCompare(a.fecha_compra.slice(0, 10))
       ));
     } catch (err) {
       setError("Error al cargar datos");
@@ -209,7 +209,7 @@ const ComprasMSI = () => {
       concepto: compra.concepto,
       monto: montoStr,
       meses: compra.meses.toString(),
-      fecha_compra: compra.fecha_compra
+      fecha_compra: compra.fecha_compra.slice(0, 10)
     });
     // Formatear como moneda para display inicial
     const formatted = new Intl.NumberFormat('es-MX', {
@@ -303,13 +303,13 @@ const ComprasMSI = () => {
 
       let response;
       if (modoEdicion && compraActual) {
-        response = await fetch(`http://localhost:4000/compras/${compraActual.id}`, {
+        response = await fetch(`/api/compras/${compraActual.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
       } else {
-        response = await fetch("http://localhost:4000/compras", {
+        response = await fetch("/api/compras", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
@@ -346,7 +346,7 @@ const ComprasMSI = () => {
     if (!compraAEliminar) return;
     
     try {
-      await fetch(`http://localhost:4000/compras/${compraAEliminar}`, {
+      await fetch(`/api/compras/${compraAEliminar}`, {
         method: "DELETE"
       });
       setOpenConfirm(false);
@@ -368,7 +368,7 @@ const ComprasMSI = () => {
     
     try {
       setLoading(true);
-      await fetch(`http://localhost:4000/compras/${compraARecalcular}/recalcular`, {
+      await fetch(`/api/compras/${compraARecalcular}/recalcular`, {
         method: "POST"
       });
       setOpenConfirmRecalcular(false);
@@ -389,7 +389,7 @@ const ComprasMSI = () => {
   const handleConfirmarRecalcularTodas = async () => {
     try {
       setLoading(true);
-      await fetch("http://localhost:4000/compras/recalcular-todas", {
+      await fetch("/api/compras/recalcular-todas", {
         method: "POST"
       });
       setOpenConfirmRecalcularTodas(false);
@@ -406,7 +406,7 @@ const ComprasMSI = () => {
     setCompraSeleccionada(compra);
     setLoading(true);
     try {
-      const response = await fetch(`http://localhost:4000/mensualidades/${compra.id}`);
+      const response = await fetch(`/api/mensualidades/${compra.id}`);
       const data = await response.json();
       setMensualidades(data);
       setOpenMensualidades(true);
@@ -457,7 +457,11 @@ const ComprasMSI = () => {
   };
 
   const formatFecha = (fecha: string) => {
-    return new Date(fecha).toLocaleDateString('es-ES');
+    const [year, month, day] = fecha.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) return '-';
+    return new Intl.DateTimeFormat('es-MX', {
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date(year, month - 1, day));
   };
 
   // Calcular pago mensual estimado
@@ -1203,7 +1207,8 @@ const ComprasMSI = () => {
               <TableBody>
                 {mensualidadesOrdenadas.map((mensualidad) => {
                   // Verificar si la fecha del mes ya pasó
-                  const fechaMensualidad = new Date(mensualidad.mes);
+                  const [year, month, day] = mensualidad.mes.slice(0, 10).split('-').map(Number);
+                  const fechaMensualidad = new Date(year, month - 1, day);
                   const fechaActual = new Date();
                   fechaMensualidad.setHours(0, 0, 0, 0);
                   fechaActual.setHours(0, 0, 0, 0);

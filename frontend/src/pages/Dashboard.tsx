@@ -24,7 +24,7 @@ const Dashboard = () => {
   const [flujo, setFlujo] = useState<FlujoMensual[]>([]);
 
   useEffect(() => {
-    fetch("http://localhost:4000/flujo")
+    fetch("/api/flujo")
       .then(res => res.json())
       .then(data => setFlujo(data))
       .catch(error => console.error("Error al cargar flujo:", error));

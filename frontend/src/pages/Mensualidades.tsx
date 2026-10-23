@@ -39,7 +39,7 @@ const Mensualidades = () => {
     setLoading(true);
     setError("");
     try {
-      const response = await fetch("http://localhost:4000/mensualidades");
+      const response = await fetch("/api/mensualidades");
       const data = await response.json();
       setMensualidades(data);
     } catch (err) {
@@ -61,7 +61,11 @@ const Mensualidades = () => {
 
   const formatFecha = (fecha: string | null) => {
     if (!fecha) return '-';
-    return new Date(fecha).toLocaleDateString('es-ES');
+    const [year, month, day] = fecha.slice(0, 10).split('-').map(Number);
+    if (!year || !month || !day) return '-';
+    return new Intl.DateTimeFormat('es-MX', {
+      year: 'numeric', month: '2-digit', day: '2-digit'
+    }).format(new Date(year, month - 1, day));
   };
 
   const handleSort = (column: keyof Mensualidad) => {
