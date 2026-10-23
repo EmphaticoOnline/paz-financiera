@@ -27,9 +27,11 @@ router.get("/detalle", async (req, res) => {
       FROM mensualidades m
       JOIN comprasmsi c ON c.id = m.compra_id
       JOIN tarjetas t ON t.id = m.tarjeta_id
-      WHERE m.pagada = false
-        AND DATE_TRUNC('month', m.mes) = DATE_TRUNC('month', $1::date)
-        AND t.nombre = $2
+      WHERE COALESCE(m.pagada, false) = false
+        -- Igualar por mes en UTC para evitar desplazamientos al pasar por zona horaria
+        AND DATE_TRUNC('month', (m.mes AT TIME ZONE 'UTC')) =
+            DATE_TRUNC('month', ($1::timestamptz AT TIME ZONE 'UTC'))
+        AND TRIM(t.nombre) = TRIM($2)
       ORDER BY c.fecha_compra, m.numero_mensualidad
     `, [mes, tarjeta]);
 

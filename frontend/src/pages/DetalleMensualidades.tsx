@@ -17,6 +17,13 @@ import {
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowUpwardIcon from '@mui/icons-material/ArrowUpward';
 import ArrowDownwardIcon from '@mui/icons-material/ArrowDownward';
+import FileDownloadIcon from '@mui/icons-material/FileDownload';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import * as XLSX from 'xlsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 interface MensualidadDetalle {
   id: string;
@@ -53,7 +60,7 @@ const DetalleMensualidades = () => {
     
     try {
       const response = await fetch(
-        `/api/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
+        `${API_URL}/mensualidades/detalle?mes=${encodeURIComponent(mes)}&tarjeta=${encodeURIComponent(tarjeta)}`
       );
       
       if (!response.ok) {
@@ -107,13 +114,24 @@ const DetalleMensualidades = () => {
     return `$${valor.toLocaleString('es-MX', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const parseMesString = (fecha: string | undefined | null) => {
+    if (!fecha) return null;
+    const [yearStr, monthStr] = fecha.split('-');
+    const year = Number(yearStr);
+    const month = Number(monthStr);
+    if (!year || !month || month < 1 || month > 12) return null;
+    const etiquetasMes = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+    return {
+      year,
+      month,
+      label: `${etiquetasMes[month - 1]} ${year}`,
+      ymKey: `${yearStr}-${monthStr.padStart(2, '0')}`
+    };
+  };
+
   const formatFecha = (fecha: string) => {
-    if (!fecha) return '-';
-    const [year, month] = fecha.slice(0, 10).split('-').map(Number);
-    if (!year || !month) return '-';
-    return new Intl.DateTimeFormat('es-MX', {
-      year: 'numeric', month: 'long', timeZone: 'UTC'
-    }).format(new Date(Date.UTC(year, month - 1, 1)));
+    const parsed = parseMesString(fecha);
+    return parsed ? parsed.label : '-';
   };
 
   const calcularTotal = () => {
@@ -121,6 +139,76 @@ const DetalleMensualidades = () => {
       const monto = typeof m.monto === 'string' ? parseFloat(m.monto) : m.monto;
       return sum + monto;
     }, 0);
+  };
+
+  const movimientos = mensualidades.length;
+  const totalMonto = calcularTotal();
+
+  const exportToExcel = () => {
+    const data = mensualidadesOrdenadas.map((m) => ({
+      Comercio: m.comercio,
+      Concepto: m.concepto,
+      'Mensualidad #': `${m.numero_mensualidad} de ${m.meses_sin_intereses}`,
+      Monto: typeof m.monto === 'string' ? parseFloat(m.monto) : m.monto
+    }));
+
+    data.push({
+      Comercio: '',
+      Concepto: 'Total',
+      'Mensualidad #': '',
+      Monto: totalMonto
+    } as any);
+
+    const ws = XLSX.utils.json_to_sheet(data);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Detalle');
+    ws['!cols'] = [
+      { wch: 24 }, // Comercio
+      { wch: 30 }, // Concepto
+      { wch: 14 }, // Mensualidad #
+      { wch: 12 }  // Monto
+    ];
+
+    const fecha = mes ? formatFecha(mes) : 'sin-fecha';
+    const nombreTarjeta = tarjeta ?? 'tarjeta';
+    XLSX.writeFile(wb, `detalle-${nombreTarjeta}-${fecha}.xlsx`);
+  };
+
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+
+    doc.setFontSize(16);
+    doc.text('Detalle de Mensualidades', 14, 15);
+    doc.setFontSize(11);
+    doc.text(`${tarjeta ?? ''} - ${mes ? formatFecha(mes) : ''}`, 14, 23);
+
+    const body = mensualidadesOrdenadas.map((m) => [
+      m.comercio,
+      m.concepto || '-',
+      `${m.numero_mensualidad} de ${m.meses_sin_intereses}`,
+      formatMonto(m.monto)
+    ]);
+
+    body.push(['', 'Total', '', formatMonto(totalMonto)]);
+
+    autoTable(doc, {
+      startY: 30,
+      head: [['Comercio', 'Concepto', 'Mensualidad #', 'Monto']],
+      body,
+      theme: 'grid',
+      headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
+      styles: { fontSize: 9, cellPadding: 3 },
+      columnStyles: {
+        0: { cellWidth: 45 },
+        1: { cellWidth: 70 },
+        2: { cellWidth: 28, halign: 'center' },
+        3: { cellWidth: 25, halign: 'right' }
+      }
+    });
+
+    const fecha = mes ? formatFecha(mes) : 'sin-fecha';
+    const nombreTarjeta = tarjeta ?? 'tarjeta';
+    doc.save(`detalle-${nombreTarjeta}-${fecha}.pdf`);
   };
 
   return (
@@ -151,6 +239,36 @@ const DetalleMensualidades = () => {
         </Box>
       ) : (
         <>
+          <Paper sx={{ mb: 2, p: 2, display: 'flex', gap: 4, flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between' }} elevation={2}>
+            <Box sx={{ display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">Movimientos</Typography>
+                <Typography variant="h6">{movimientos}</Typography>
+              </Box>
+              <Box>
+                <Typography variant="subtitle2" color="text.secondary">Suma de montos</Typography>
+                <Typography variant="h6">{formatMonto(totalMonto)}</Typography>
+              </Box>
+            </Box>
+            <Box sx={{ display: 'flex', gap: 1 }}>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<FileDownloadIcon />}
+                onClick={exportToExcel}
+              >
+                Excel
+              </Button>
+              <Button
+                variant="outlined"
+                size="small"
+                startIcon={<PictureAsPdfIcon />}
+                onClick={exportToPDF}
+              >
+                PDF
+              </Button>
+            </Box>
+          </Paper>
           <TableContainer component={Paper}>
             <Table size="small">
               <TableHead>

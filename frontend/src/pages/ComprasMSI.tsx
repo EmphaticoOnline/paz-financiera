@@ -72,6 +72,8 @@ interface Compra {
   fecha_fin?: string;
 }
 
+type OrderKey = keyof Compra | 'monto_mensual';
+
 interface Mensualidad {
   id: string;
   compra_id: string;
@@ -82,6 +84,8 @@ interface Mensualidad {
   fecha_pago: string | null;
   mes: string;
 }
+
+const API_URL = import.meta.env.VITE_API_URL;
 
 const ComprasMSI = () => {
   const theme = useTheme();
@@ -95,9 +99,9 @@ const ComprasMSI = () => {
   const [tarjetaFiltro, setTarjetaFiltro] = useState<string>("todas");
   const [busqueda, setBusqueda] = useState<string>("");
   const [mostrarSaldoCero, setMostrarSaldoCero] = useState<boolean>(false);
-  const [orderBy, setOrderBy] = useState<keyof Compra>(() => {
+  const [orderBy, setOrderBy] = useState<OrderKey>(() => {
     const saved = localStorage.getItem('comprasMSI_orderBy');
-    return (saved as keyof Compra) || 'fecha_compra';
+    return (saved as OrderKey) || 'fecha_compra';
   });
   const [orderDirection, setOrderDirection] = useState<'asc' | 'desc'>(() => {
     const saved = localStorage.getItem('comprasMSI_orderDirection');
@@ -139,14 +143,15 @@ const ComprasMSI = () => {
     const saved = localStorage.getItem('comprasMSI_mensualidades_orderDirection');
     return (saved as 'asc' | 'desc') || 'asc';
   });
+  const [selectedCompraIds, setSelectedCompraIds] = useState<Set<string>>(new Set());
 
   const cargarDatos = async () => {
     setLoading(true);
     setError("");
     try {
       const [tarjetasRes, comprasRes] = await Promise.all([
-        fetch("/api/tarjetas"),
-        fetch("/api/compras")
+        fetch(`${API_URL}/tarjetas`),
+        fetch(`${API_URL}/compras`)
       ]);
       const tarjetasData = await tarjetasRes.json();
       const comprasData = await comprasRes.json();
@@ -175,6 +180,19 @@ const ComprasMSI = () => {
     localStorage.setItem('comprasMSI_mensualidades_orderBy', orderByMens);
     localStorage.setItem('comprasMSI_mensualidades_orderDirection', orderDirectionMens);
   }, [orderByMens, orderDirectionMens]);
+
+  useEffect(() => {
+    setSelectedCompraIds(prev => {
+      const next = new Set(prev);
+      const comprasIds = new Set(compras.map(compra => compra.id));
+      Array.from(next).forEach(id => {
+        if (!comprasIds.has(id)) {
+          next.delete(id);
+        }
+      });
+      return next;
+    });
+  }, [compras]);
 
   const handleNuevaCompra = () => {
     setModoEdicion(false);
@@ -303,13 +321,13 @@ const ComprasMSI = () => {
 
       let response;
       if (modoEdicion && compraActual) {
-        response = await fetch(`/api/compras/${compraActual.id}`, {
+        response = await fetch(`${API_URL}/compras/${compraActual.id}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
         });
       } else {
-        response = await fetch("/api/compras", {
+        response = await fetch(`${API_URL}/compras`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(body)
@@ -346,7 +364,7 @@ const ComprasMSI = () => {
     if (!compraAEliminar) return;
     
     try {
-      await fetch(`/api/compras/${compraAEliminar}`, {
+      await fetch(`${API_URL}/compras/${compraAEliminar}`, {
         method: "DELETE"
       });
       setOpenConfirm(false);
@@ -368,7 +386,7 @@ const ComprasMSI = () => {
     
     try {
       setLoading(true);
-      await fetch(`/api/compras/${compraARecalcular}/recalcular`, {
+      await fetch(`${API_URL}/compras/${compraARecalcular}/recalcular`, {
         method: "POST"
       });
       setOpenConfirmRecalcular(false);
@@ -389,7 +407,7 @@ const ComprasMSI = () => {
   const handleConfirmarRecalcularTodas = async () => {
     try {
       setLoading(true);
-      await fetch("/api/compras/recalcular-todas", {
+      await fetch(`${API_URL}/compras/recalcular-todas`, {
         method: "POST"
       });
       setOpenConfirmRecalcularTodas(false);
@@ -406,7 +424,7 @@ const ComprasMSI = () => {
     setCompraSeleccionada(compra);
     setLoading(true);
     try {
-      const response = await fetch(`/api/mensualidades/${compra.id}`);
+      const response = await fetch(`${API_URL}/mensualidades/${compra.id}`);
       const data = await response.json();
       setMensualidades(data);
       setOpenMensualidades(true);
@@ -464,6 +482,23 @@ const ComprasMSI = () => {
     }).format(new Date(year, month - 1, day));
   };
 
+  const getMensualidadValue = (compra: Compra) => {
+    const monto = typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto;
+    return compra.meses ? monto / compra.meses : 0;
+  };
+
+  const handleToggleCompra = (id: string) => {
+    setSelectedCompraIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   // Calcular pago mensual estimado
   const calcularPagoMensual = () => {
     const monto = parseFloat(formData.monto);
@@ -479,7 +514,8 @@ const ComprasMSI = () => {
     const tarjeta = tarjetas.find(t => t.id === formData.tarjeta_id);
     if (!tarjeta) return null;
 
-    const fechaCompra = new Date(formData.fecha_compra);
+    const [anioC, mesC, diaC] = formData.fecha_compra.split('-').map(Number);
+    const fechaCompra = new Date(anioC, mesC - 1, diaC);
     const diaCompra = fechaCompra.getDate();
     const mesCompra = fechaCompra.getMonth(); // 0-11
     const anioCompra = fechaCompra.getFullYear();
@@ -515,7 +551,7 @@ const ComprasMSI = () => {
   const pagoMensual = calcularPagoMensual();
   const fechaUltimoPago = calcularFechaUltimoPago();
 
-  const handleSort = (column: keyof Compra) => {
+  const handleSort = (column: OrderKey) => {
     const isAsc = orderBy === column && orderDirection === 'asc';
     setOrderDirection(isAsc ? 'desc' : 'asc');
     setOrderBy(column);
@@ -553,6 +589,7 @@ const ComprasMSI = () => {
     
     // Buscar en números
     const monto = typeof c.monto === 'string' ? parseFloat(c.monto) : c.monto;
+    const montoMensual = c.meses ? monto / c.meses : 0;
     const saldoRestante = c.saldo_restante !== undefined 
       ? (typeof c.saldo_restante === 'string' ? parseFloat(c.saldo_restante) : c.saldo_restante)
       : null;
@@ -561,6 +598,7 @@ const ComprasMSI = () => {
     const numerosBusqueda = parseFloat(terminoBusqueda);
     const coincideNumero = !isNaN(numerosBusqueda) && (
       monto.toString().includes(terminoBusqueda) ||
+      montoMensual.toString().includes(terminoBusqueda) ||
       (saldoRestante !== null && saldoRestante.toString().includes(terminoBusqueda)) ||
       (mesesRestantes !== undefined && mesesRestantes.toString().includes(terminoBusqueda))
     );
@@ -569,8 +607,21 @@ const ComprasMSI = () => {
   });
 
   const comprasOrdenadas = [...comprasFiltradas].sort((a, b) => {
-    let aValue = a[orderBy];
-    let bValue = b[orderBy];
+    const aMonto = typeof a.monto === 'string' ? parseFloat(a.monto) : a.monto;
+    const bMonto = typeof b.monto === 'string' ? parseFloat(b.monto) : b.monto;
+    const aMontoMensual = a.meses ? aMonto / a.meses : 0;
+    const bMontoMensual = b.meses ? bMonto / b.meses : 0;
+
+    let aValue: any;
+    let bValue: any;
+
+    if (orderBy === 'monto_mensual') {
+      aValue = aMontoMensual;
+      bValue = bMontoMensual;
+    } else {
+      aValue = a[orderBy];
+      bValue = b[orderBy];
+    }
 
     // Manejar valores undefined
     if (aValue === undefined && bValue === undefined) return 0;
@@ -578,7 +629,7 @@ const ComprasMSI = () => {
     if (bValue === undefined) return orderDirection === 'asc' ? -1 : 1;
 
     // Convertir valores a números si es monto, saldo_restante o meses_restantes
-    if (orderBy === 'monto' || orderBy === 'saldo_restante' || orderBy === 'meses_restantes') {
+    if (orderBy === 'monto' || orderBy === 'saldo_restante' || orderBy === 'meses_restantes' || orderBy === 'monto_mensual') {
       aValue = typeof aValue === 'string' ? parseFloat(aValue as string) : aValue as number;
       bValue = typeof bValue === 'string' ? parseFloat(bValue as string) : bValue as number;
     }
@@ -593,12 +644,33 @@ const ComprasMSI = () => {
     return 0;
   });
 
+  const comprasSeleccionadas = comprasOrdenadas.filter(compra => selectedCompraIds.has(compra.id));
+  const totalMensualidadSeleccionada = comprasSeleccionadas.reduce(
+    (acc, compra) => acc + getMensualidadValue(compra),
+    0
+  );
+  const todosSeleccionados = comprasOrdenadas.length > 0 && comprasOrdenadas.every(compra => selectedCompraIds.has(compra.id));
+  const algunosSeleccionados = comprasOrdenadas.some(compra => selectedCompraIds.has(compra.id));
+
+  const handleToggleAllCompras = () => {
+    setSelectedCompraIds(prev => {
+      const next = new Set(prev);
+      if (todosSeleccionados) {
+        comprasOrdenadas.forEach(compra => next.delete(compra.id));
+      } else {
+        comprasOrdenadas.forEach(compra => next.add(compra.id));
+      }
+      return next;
+    });
+  };
+
   const exportToExcel = () => {
     const data = comprasOrdenadas.map(compra => ({
       'Tarjeta': getNombreTarjeta(compra.tarjeta_id),
       'Comercio': compra.comercio,
       'Concepto': compra.concepto,
       'Monto': typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto,
+      'Mensualidad': compra.meses ? (typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto) / compra.meses : 0,
       'Meses': compra.meses,
       'Fecha Compra': formatFecha(compra.fecha_compra),
       'Meses Pagados': compra.meses_pagados || 0,
@@ -615,6 +687,7 @@ const ComprasMSI = () => {
       { wch: 20 }, // Comercio
       { wch: 30 }, // Concepto
       { wch: 12 }, // Monto
+      { wch: 12 }, // Mensualidad
       { wch: 8 },  // Meses
       { wch: 15 }, // Fecha
       { wch: 15 }, // Meses Pagados
@@ -638,6 +711,7 @@ const ComprasMSI = () => {
       compra.comercio,
       compra.concepto || '-',
       formatMonto(compra.monto),
+      compra.meses ? formatMonto((typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto) / compra.meses) : '$0.00',
       compra.meses?.toString() || '-',
       formatFecha(compra.fecha_compra),
       (compra.meses_pagados || 0).toString(),
@@ -647,7 +721,7 @@ const ComprasMSI = () => {
 
     autoTable(doc, {
       startY: 22,
-      head: [['Tarjeta', 'Comercio', 'Concepto', 'Monto', 'Meses', 'Fecha', 'M. Pagados', 'M. Restantes', 'Saldo']],
+      head: [['Tarjeta', 'Comercio', 'Concepto', 'Monto', 'Mensualidad', 'Meses', 'Fecha', 'M. Pagados', 'M. Restantes', 'Saldo']],
       body: tableData,
       theme: 'grid',
       headStyles: { fillColor: [0, 51, 102], textColor: 255, fontStyle: 'bold' },
@@ -657,11 +731,12 @@ const ComprasMSI = () => {
         1: { cellWidth: 35 },
         2: { cellWidth: 50 },
         3: { cellWidth: 22, halign: 'right' },
-        4: { cellWidth: 15, halign: 'center' },
-        5: { cellWidth: 25 },
-        6: { cellWidth: 20, halign: 'center' },
-        7: { cellWidth: 22, halign: 'center' },
-        8: { cellWidth: 22, halign: 'right' }
+        4: { cellWidth: 22, halign: 'right' },
+        5: { cellWidth: 15, halign: 'center' },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 20, halign: 'center' },
+        8: { cellWidth: 22, halign: 'center' },
+        9: { cellWidth: 22, halign: 'right' }
       }
     });
 
@@ -711,7 +786,7 @@ const ComprasMSI = () => {
       </Box>
 
       {/* Segunda fila: Controles de búsqueda, filtros y acciones */}
-      <Box sx={{ mb: 3 }}>
+      <Box sx={{ mb: 3, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
         <Stack direction="row" spacing={2} alignItems="center" flexWrap="wrap">
           <TextField
             size="small"
@@ -781,6 +856,16 @@ const ComprasMSI = () => {
             </IconButton>
           </Tooltip>
         </Stack>
+        <Paper sx={{ p: 1.5, minWidth: 160, textAlign: 'center' }} elevation={1}>
+          <Typography variant="subtitle2" color="text.secondary">Movimientos</Typography>
+          <Typography variant="h6">{comprasOrdenadas.length}</Typography>
+          <Typography variant="caption" color="text.secondary">
+            Seleccionados: {comprasSeleccionadas.length}
+          </Typography>
+          <Typography variant="subtitle2" sx={{ mt: 0.5, fontWeight: 600 }}>
+            {formatMonto(totalMensualidadSeleccionada)}
+          </Typography>
+        </Paper>
       </Box>
 
       {error && <Typography color="error" sx={{ mb: 2 }}>{error}</Typography>}
@@ -825,12 +910,21 @@ const ComprasMSI = () => {
 
       {/* Vista Tabla */}
       {vistaActual === 'table' && (
-        <TableContainer component={Paper}>
-          <Table size="small">
-            <TableHead>
+        <TableContainer component={Paper} sx={{ maxHeight: { xs: '60vh', md: '70vh' } }}>
+          <Table size="small" stickyHeader>
+            <TableHead sx={{ position: 'sticky', top: 0, zIndex: 2 }}>
               <TableRow sx={{ bgcolor: '#003366' }}>
+                <TableCell padding="checkbox" sx={{ color: 'white', bgcolor: '#003366' }}>
+                  <Checkbox
+                    size="small"
+                    checked={todosSeleccionados}
+                    indeterminate={!todosSeleccionados && algunosSeleccionados}
+                    onChange={handleToggleAllCompras}
+                    sx={{ color: 'white' }}
+                  />
+                </TableCell>
                 <TableCell 
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', py: 0.75 }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', py: 0.75, bgcolor: '#003366' }}
                   onClick={() => handleSort('tarjeta_id')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -841,7 +935,7 @@ const ComprasMSI = () => {
                   </Box>
                 </TableCell>
                 <TableCell 
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', py: 0.75 }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', py: 0.75, bgcolor: '#003366' }}
                   onClick={() => handleSort('comercio')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -852,7 +946,7 @@ const ComprasMSI = () => {
                   </Box>
                 </TableCell>
                 <TableCell 
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('concepto')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -864,7 +958,7 @@ const ComprasMSI = () => {
                 </TableCell>
                 <TableCell 
                   align="right"
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('monto')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
@@ -876,7 +970,19 @@ const ComprasMSI = () => {
                 </TableCell>
                 <TableCell 
                   align="right"
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
+                  onClick={() => handleSort('monto_mensual')}
+                >
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
+                    <strong>Mensualidad</strong>
+                    {orderBy === 'monto_mensual' && (
+                      orderDirection === 'asc' ? <ArrowUpwardIcon fontSize="small" /> : <ArrowDownwardIcon fontSize="small" />
+                    )}
+                  </Box>
+                </TableCell>
+                <TableCell 
+                  align="right"
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('saldo_restante')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'flex-end' }}>
@@ -888,7 +994,7 @@ const ComprasMSI = () => {
                 </TableCell>
                 <TableCell 
                   align="center"
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('meses_restantes')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, justifyContent: 'center' }}>
@@ -899,7 +1005,7 @@ const ComprasMSI = () => {
                   </Box>
                 </TableCell>
                 <TableCell 
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('fecha_compra')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -910,7 +1016,7 @@ const ComprasMSI = () => {
                   </Box>
                 </TableCell>
                 <TableCell 
-                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white' }}
+                  sx={{ cursor: 'pointer', userSelect: 'none', color: 'white', bgcolor: '#003366' }}
                   onClick={() => handleSort('fecha_fin')}
                 >
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
@@ -920,19 +1026,28 @@ const ComprasMSI = () => {
                     )}
                   </Box>
                 </TableCell>
-                <TableCell align="center" sx={{ color: 'white' }}><strong>Acciones</strong></TableCell>
+                <TableCell align="center" sx={{ color: 'white', bgcolor: '#003366' }}><strong>Acciones</strong></TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {comprasOrdenadas.map((compra) => (
                 <TableRow 
                   key={compra.id}
+                  selected={selectedCompraIds.has(compra.id)}
                   sx={{ '&:nth-of-type(odd)': { backgroundColor: 'action.hover' } }}
                 >
+                  <TableCell padding="checkbox">
+                    <Checkbox
+                      size="small"
+                      checked={selectedCompraIds.has(compra.id)}
+                      onChange={() => handleToggleCompra(compra.id)}
+                    />
+                  </TableCell>
                   <TableCell>{compra.tarjeta || getNombreTarjeta(compra.tarjeta_id)}</TableCell>
                   <TableCell>{compra.comercio}</TableCell>
                   <TableCell>{compra.concepto}</TableCell>
                   <TableCell align="right">{formatMonto(compra.monto)}</TableCell>
+                  <TableCell align="right">{compra.meses ? formatMonto((typeof compra.monto === 'string' ? parseFloat(compra.monto) : compra.monto) / compra.meses) : '$0.00'}</TableCell>
                   <TableCell align="right">
                     {compra.saldo_restante !== undefined ? formatMonto(compra.saldo_restante) : '-'}
                   </TableCell>

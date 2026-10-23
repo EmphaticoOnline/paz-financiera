@@ -7,6 +7,8 @@ import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
+const API_URL = import.meta.env.VITE_API_URL;
+
 interface Tarjeta { id: string; nombre: string; }
 interface FlujoMensual { mes: string; importes: Record<string, number | string>; suma_total: number | string; }
 interface FlujoResponse { tarjetas: Tarjeta[]; flujo: FlujoMensual[]; }
@@ -19,7 +21,7 @@ const FlujoMensual = () => {
 
   useEffect(() => {
     setLoading(true);
-    fetch("/api/flujo-mensual")
+    fetch(`${API_URL}/flujo-mensual`)
       .then(async response => { if (!response.ok) throw new Error('Error al cargar flujo mensual'); return response.json() as Promise<FlujoResponse>; })
       .then(data => { setTarjetas(data.tarjetas); setFlujo(data.flujo); })
       .catch(err => { setError("Error al cargar flujo mensual"); console.error(err); })
@@ -36,7 +38,9 @@ const FlujoMensual = () => {
     return new Intl.DateTimeFormat('es-MX', { year: 'numeric', month: 'long', timeZone: 'UTC' })
       .format(new Date(Date.UTC(year, month - 1, 1)));
   };
-  const flujoFiltrado = flujo.filter(row => Number(row.suma_total) > 0);
+  const now = new Date();
+  const currentMonthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+  const flujoFiltrado = flujo.filter(row => row.mes.slice(0, 7) >= currentMonthKey && Number(row.suma_total) > 0);
 
   const renderMontoCell = (monto: number | string, mes: string, tarjeta: Tarjeta) => {
     const valor = Number(monto) || 0;
